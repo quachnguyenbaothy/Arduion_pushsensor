@@ -69,7 +69,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 
-//Thư viện kết nối NPK
+//Thư viện kết nối PH, nhietdo
 #include <SoftwareSerial.h>
 #include <ModbusMaster.h>
 
@@ -95,11 +95,11 @@ Adafruit_MQTT_Publish nhietdo = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feed
 Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/onoff");
 
 
-//Chân kết nối UART với NPK
+//Chân kết nối UART với pH
 #define SSerialRX         D5
 #define SSerialTX         D6
 
-// Cài đặt cổng kết nối cảm biến NPK
+// Cài đặt cổng kết nối cảm biến pH
 SoftwareSerial mySerial (SSerialRX, SSerialTX);
 ModbusMaster node;
 
@@ -315,7 +315,7 @@ void dataAdafruit() {
   }
 }
 
-//Hàm upload dữ liệu NPK lên firebase
+//Hàm upload dữ liệu pH lên firebase
 void dataFirebase() {
 
   //float latitude = 9.123456;  // Kinh độ
