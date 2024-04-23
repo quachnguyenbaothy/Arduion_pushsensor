@@ -87,11 +87,9 @@ WiFiClient client;
 Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
 
 //Cài đặt đường dẫn feed trên Adafruit
-Adafruit_MQTT_Publish Nito = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/Nito");
-Adafruit_MQTT_Publish Photpho = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/Photpho");
-Adafruit_MQTT_Publish Kali = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/Kali");
+
 Adafruit_MQTT_Publish PH = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/PH");
-Adafruit_MQTT_Publish EC = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/EC");
+Adafruit_MQTT_Publish nhietdo = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/nhietdo");
 
 // Thiết lập nguồn cấp dữ liệu có tên 'onoff'
 Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/onoff");
@@ -105,7 +103,7 @@ Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAM
 SoftwareSerial mySerial (SSerialRX, SSerialTX);
 ModbusMaster node;
 
-float nito, photpho, kali, ph, ec ; // Smart water sensor PH/ORP
+float ph, nhietdo ; // Smart water sensor PH/ORP
 float result;
 
 void setup() {
@@ -168,15 +166,7 @@ void setup() {
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     delay(500);
     display.clearDisplay();
-    //    display.setCursor(25, 15);
-    //    display.setTextSize(1);
-    //    display.setTextColor(WHITE);
-    //    display.println(" NPK Sensor");
-    //    display.setCursor(25, 35);
-    //    display.setTextSize(1);
-    //    display.print("Initializing");
-    //    display.display();
-    //    delay(3000);
+    
   }
   Serial.println("Start!");
 }
@@ -218,7 +208,7 @@ void loop() {
   dataAdafruit();
     //ket noi gps
   GPS_data();
-  //Upload dữ liệu NPK lên firebase
+  //Upload dữ liệu pH, nhietdo lên firebase
   dataFirebase();
 
 
@@ -257,54 +247,12 @@ void dataAdafruit() {
     }
   }
 
-  //Lấy giá trị cảm biến NPK,PH,EC
+  //Lấy giá trị cảm biến PH,nhietdo
   uint16_t data[6];
-  float nito, photpho, kali, ph, ec; // Smart water sensor PH/ORP
+  float  ph, nhietdo; // Smart water sensor PH/ORP
   float result;
   //===============================================
-  Serial.println("Read Data NPK SENSOR: ID = 1");
-  node.begin(1, mySerial);
-  delay(300);
-
-  // Đọc giá trị nito
-  result = node.readHoldingRegisters(0x001E, 2);
-  // do something with data if read is successful
-  if (result == node.ku8MBSuccess)
-  {
-    data[0] = node.receive();
-    nito = float(data[0]);
-    Serial.print("Nito Value: ");
-    Serial.print(nito);
-    Serial.println("mg/Kg");
-  }
-  delay(500);
-  // Đọc giá trị photpho
-  result = node.readHoldingRegisters(0x001F, 2);
-  // do something with data if read is successful
-  if (result == node.ku8MBSuccess)
-  {
-    data[0] = node.receive();
-    photpho = float(data[0]);
-    Serial.print("Photpho Value: ");
-    Serial.print(photpho);
-    Serial.println("mg/Kg");
-  }
-  delay(200);
-
-  // Đọc giá trị kali
-  result = node.readHoldingRegisters(0x0020, 2);
-  // do something with data if read is successful
-  if (result == node.ku8MBSuccess)
-  {
-    data[0] = node.receive();
-    kali = float(data[0]);
-    Serial.print("Kali Value: ");
-    Serial.print(kali);
-    Serial.println("mg/Kg");
-  }
-  delay(200);
-  Serial.println();
-
+  
   //===============================================
   // doc cam bien 4 trong 1
   Serial.println("Read Data 4 in 1 SENSOR: ID = 2");
@@ -322,50 +270,29 @@ void dataAdafruit() {
     Serial.print(ph);
   }
 
-  // Đọc giá trị ec
+  // Đọc giá trị nhietdo
   result = node.readHoldingRegisters(0x0002, 2);
   // do something with data if read is successful
   if (result == node.ku8MBSuccess)
   {
     data[0] = node.receive();
     ec = float((data[0]) / 1000);
-    Serial.print("EC Value: ");
-    Serial.print(ec);
-    Serial.println("dS/m");
+    Serial.print("Nhietdo Value: ");
+    Serial.print(nhietdo);
+    Serial.println("0C");
   }
   delay(200);
 
   Serial1.println();
   display.clearDisplay();
 
-  display.setTextSize(1);
-  display.setCursor(0, 15);
-  display.print("N: ");
-  display.print(nito);
-  display.setTextSize(1);
-  display.print(" mg/kg");
-
-  display.setTextSize(1);
-  display.setCursor(0, 25);
-  display.print("P: ");
-  display.print(photpho);
-  display.setTextSize(1);
-  display.print(" mg/kg");
-
-  display.setTextSize(1);
-  display.setCursor(0, 35);
-  display.print("K: ");
-  display.print(kali);
-  display.setTextSize(1);
-  display.print(" mg/kg");
-  display.display();
-
+ 
   display.setTextSize(1);
   display.setCursor(0, 45);
-  display.print("EC: ");
-  display.print(ec);
+  display.print("nhietdo: ");
+  display.print(0C);
   display.setTextSize(1);
-  display.print(" dS/m");
+  display.print(" 0C");
   display.display();
 
   display.setTextSize(1);
@@ -375,27 +302,13 @@ void dataAdafruit() {
   display.setTextSize(1);
   display.display();
 
-  if (! Nito.publish(nito)) {
-    Serial.println(F("Failed"));
-  } else {
-    Serial.println(F("OK!"));
-  }
-  if (! Photpho.publish(photpho)) {
-    Serial.println(F("Failed"));
-  } else {
-    Serial.println(F("OK!"));
-  }
-  if (! Kali.publish(kali)) {
-    Serial.println(F("Failed"));
-  } else {
-    Serial.println(F("OK!"));
-  }
+  
   if (! PH.publish(ph)) {
     Serial.println(F("Failed"));
   } else {
     Serial.println(F("OK!"));
   }
-  if (! EC.publish(ec)) {
+  if (! nhietdo.publish(nhietdo)) {
     Serial.println(F("Failed"));
   } else {
     Serial.println(F("OK!"));
@@ -436,51 +349,7 @@ void dataFirebase() {
 //    return;
 //  }
 
-  //Khai bao bien cho cam bien NPK
-  uint16_t data[10];
-  float nito, photpho, kali, ph, ec; // Smart water sensor PH/ORP
-  float result;
-
-  Serial.println("Read Data NPK SENSOR: ID = 1");
-  node.begin(1, mySerial);
-  delay(300);
-
-  // Đọc giá trị nito
-  result = node.readHoldingRegisters(0x001E, 2);
-  // do something with data if read is successful
-  if (result == node.ku8MBSuccess)
-  {
-    data[0] = node.receive();
-    nito = float(data[0]);
-    Serial.print("Nito Value: ");
-    Serial.print(nito);
-    Serial.println("mg/Kg");
-  }
-  delay(500);
-  // Đọc giá trị photpho
-  result = node.readHoldingRegisters(0x001F, 2);
-  // do something with data if read is successful
-  if (result == node.ku8MBSuccess)
-  {
-    data[0] = node.receive();
-    photpho = float(data[0]);
-    Serial.print("Photpho Value: ");
-    Serial.print(photpho);
-    Serial.println("mg/Kg");
-  }
-  delay(200);
-
-  // Đọc giá trị kali
-  result = node.readHoldingRegisters(0x0020, 2);
-  // do something with data if read is successful
-  if (result == node.ku8MBSuccess)
-  {
-    data[0] = node.receive();
-    kali = float(data[0]);
-    Serial.print("Kali Value: ");
-    Serial.print(kali);
-    Serial.println("mg/Kg");
-  }
+ 
 
   // doc cam bien 4 trong 1
   Serial.println("Read Data 4 in 1 SENSOR: ID = 2");
@@ -498,16 +367,16 @@ void dataFirebase() {
     Serial.print(ph);
   }
 
-  // Đọc giá trị ec
+  // Đọc giá trị nhietdo
   result = node.readHoldingRegisters(0x0002, 2);
   // do something with data if read is successful
   if (result == node.ku8MBSuccess)
   {
     data[0] = node.receive();
-    ec = float((data[0]) / 1000);
-    Serial.print("EC Value: ");
-    Serial.print(ec);
-    Serial.println("dS/m");
+    nhietdo = float((data[0]) / 1000);
+    Serial.print("Nhietdo Value: ");
+    Serial.print(nhietdo);
+    Serial.println("0C");
   }
   delay(200);
 
@@ -520,28 +389,19 @@ void dataFirebase() {
     if (fbdo.httpCode() == FIREBASE_ERROR_HTTP_CODE_OK)
     {
       String timestamp = String(fbdo.to<int>());
-      String nitoPath = "/data/" + timestamp + "/n";
-      String kaliPath = "/data/" + timestamp + "/k";
-      String photphoPath = "/data/" + timestamp + "/p";
       String phPath = "/data/" + timestamp + "/ph";
-      String ecPath = "/data/" + timestamp + "/ec";
+      String nhietdoPath = "/data/" + timestamp + "/nhietdo";
       String latPath = "/data/" + timestamp + "/lat";
       String longPath = "/data/" + timestamp + "/long";
-
-
-      Serial.printf("Set Nito... %s\n", Firebase.setFloat(fbdo, nitoPath, nito) ? "ok" : fbdo.errorReason().c_str());
-      Serial.printf("Set Photpho... %s\n", Firebase.setFloat(fbdo, photphoPath, photpho) ? "ok" : fbdo.errorReason().c_str());
-      Serial.printf("Set Kali... %s\n", Firebase.setFloat(fbdo, kaliPath, kali) ? "ok" : fbdo.errorReason().c_str());
+      
       Serial.printf("Set ph... %s\n", Firebase.setFloat(fbdo, phPath, ph) ? "ok" : fbdo.errorReason().c_str());
-      Serial.printf("Set ec... %s\n", Firebase.setFloat(fbdo, ecPath, ec) ? "ok" : fbdo.errorReason().c_str());
+      Serial.printf("Set nhietdo... %s\n", Firebase.setFloat(fbdo, nhietdoPath, ec) ? "ok" : fbdo.errorReason().c_str());
       Serial.printf("Set lat... %s\n", Firebase.setFloat(fbdo, latPath, latitude) ? "ok" : fbdo.errorReason().c_str());
       Serial.printf("Set long... %s\n", Firebase.setFloat(fbdo, longPath, longitude) ? "ok" : fbdo.errorReason().c_str());
       delay(500);
-      Serial.printf("Get Nito... %s\n", Firebase.getFloat(fbdo, nitoPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
-      Serial.printf("Get Photpho... %s\n", Firebase.getFloat(fbdo, photphoPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
-      Serial.printf("Get Kali... %s\n", Firebase.getFloat(fbdo, kaliPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
+      
       Serial.printf("Get ph... %s\n", Firebase.getFloat(fbdo, phPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
-      Serial.printf("Get ec... %s\n", Firebase.getFloat(fbdo, ecPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
+      Serial.printf("Get nhietdo... %s\n", Firebase.getFloat(fbdo, nhietdoPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
       Serial.printf("Get lat... %s\n", Firebase.getFloat(fbdo, latPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
       Serial.printf("Get long... %s\n", Firebase.getFloat(fbdo, longPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
 
