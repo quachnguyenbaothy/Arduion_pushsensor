@@ -69,7 +69,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 
-//Thư viện kết nối PH, nhietdo
+//Thư viện kết nối NPK
 #include <SoftwareSerial.h>
 #include <ModbusMaster.h>
 
@@ -89,21 +89,21 @@ Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO
 //Cài đặt đường dẫn feed trên Adafruit
 
 Adafruit_MQTT_Publish PH = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/PH");
-Adafruit_MQTT_Publish nhietdo = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/nhietdo");
+Adafruit_MQTT_Publish Nhietdo = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/Nhietdo");
 
 // Thiết lập nguồn cấp dữ liệu có tên 'onoff'
 Adafruit_MQTT_Subscribe onoffbutton = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/onoff");
 
 
-//Chân kết nối UART với pH
+//Chân kết nối UART với PH và Nhiệt độ
 #define SSerialRX         D5
 #define SSerialTX         D6
 
-// Cài đặt cổng kết nối cảm biến pH
+// Cài đặt cổng kết nối cảm biến PH và Nhiệt độ
 SoftwareSerial mySerial (SSerialRX, SSerialTX);
 ModbusMaster node;
 
-float ph, nhietdo ; // Smart water sensor PH/ORP
+float  ph, nhietdo ; // Smart water sensor PH/ORP
 float result;
 
 void setup() {
@@ -166,7 +166,15 @@ void setup() {
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     delay(500);
     display.clearDisplay();
-    
+    //    display.setCursor(25, 15);
+    //    display.setTextSize(1);
+    //    display.setTextColor(WHITE);
+    //    display.println(" NPK Sensor");
+    //    display.setCursor(25, 35);
+    //    display.setTextSize(1);
+    //    display.print("Initializing");
+    //    display.display();
+    //    delay(3000);
   }
   Serial.println("Start!");
 }
@@ -208,7 +216,7 @@ void loop() {
   dataAdafruit();
     //ket noi gps
   GPS_data();
-  //Upload dữ liệu pH, nhietdo lên firebase
+  //Upload dữ liệu PH và Nhiệt độ lên firebase
   dataFirebase();
 
 
@@ -237,7 +245,7 @@ void MQTT_connect() {
   Serial.println("MQTT Connected!");
 }
 
-//Hàm kết nối NPK-OLED
+//Hàm kết nối PH và Nhiệt độ lên Adafruit io
 void dataAdafruit() {
   Adafruit_MQTT_Subscribe *subscription;
   while ((subscription = mqtt.readSubscription(5000))) {
@@ -247,14 +255,15 @@ void dataAdafruit() {
     }
   }
 
-  //Lấy giá trị cảm biến PH,nhietdo
+  //Lấy giá trị cảm biến PH và Nhiệt độ
   uint16_t data[6];
-  float  ph, nhietdo; // Smart water sensor PH/ORP
+  float ph, nhietdo; 
   float result;
   //===============================================
-  
-  //===============================================
-  // doc cam bien 4 trong 1
+  Serial.println("Read Data NPK SENSOR: ID = 1");
+  node.begin(1, mySerial);
+  delay(300);
+    // doc cam bien 4 trong 1
   Serial.println("Read Data 4 in 1 SENSOR: ID = 2");
   node.begin(2, mySerial);
   delay(300);
@@ -269,53 +278,36 @@ void dataAdafruit() {
     Serial.print("pH Value: ");
     Serial.print(ph);
   }
-
-  // Đọc giá trị nhietdo
-  result = node.readHoldingRegisters(0x0002, 2);
-  // do something with data if read is successful
-  if (result == node.ku8MBSuccess)
-  {
-    data[0] = node.receive();
-    ec = float((data[0]) / 1000);
-    Serial.print("Nhietdo Value: ");
-    Serial.print(nhietdo);
-    Serial.println("0C");
-  }
-  delay(200);
+ 
+   //Đọc nhiệt độ
+        result = node.readHoldingRegisters(0x0001, 2);
+    // do something with data if read is successful
+    if (result == node.ku8MBSuccess)
+    {
+       data[0] = node.receive();
+       nhietdo = float((data[0])/10);
+       Serial.print("Temp Value: "); 
+       Serial.print(nhietdo); 
+       Serial.println("oC");
+    }
+       delay(200);
 
   Serial1.println();
   display.clearDisplay();
 
- 
-  display.setTextSize(1);
-  display.setCursor(0, 45);
-  display.print("nhietdo: ");
-  display.print(0C);
-  display.setTextSize(1);
-  display.print(" 0C");
-  display.display();
-
-  display.setTextSize(1);
-  display.setCursor(0, 55);
-  display.print("pH: ");
-  display.print(ph);
-  display.setTextSize(1);
-  display.display();
-
-  
-  if (! PH.publish(ph)) {
+   if (! PH.publish(ph)) {
     Serial.println(F("Failed"));
   } else {
     Serial.println(F("OK!"));
   }
-  if (! nhietdo.publish(nhietdo)) {
+  if (! Nhietdo.publish(nhietdo)) {
     Serial.println(F("Failed"));
   } else {
     Serial.println(F("OK!"));
   }
-}
+     }
 
-//Hàm upload dữ liệu pH lên firebase
+//Hàm upload dữ liệu NPK lên firebase
 void dataFirebase() {
 
   //float latitude = 9.123456;  // Kinh độ
@@ -343,18 +335,34 @@ void dataFirebase() {
       }
     }
   }
-//  delay(200);
-//  if (gps_send == false) {
-//    Serial.println("gps is not started");
-//    return;
-//  }
+  //Khai bao bien cho cam bien PH và Nhiệt độ
+  uint16_t data[10];
+  float ph, nhietdo; //Sensor Temperarure and Humidity // Smart water sensor PH/ORP
+  float result;
+
+  Serial.println("Read Data NPK SENSOR: ID = 1");
+  node.begin(1, mySerial);
+  delay(300);
 
  
-
   // doc cam bien 4 trong 1
   Serial.println("Read Data 4 in 1 SENSOR: ID = 2");
   node.begin(2, mySerial);
   delay(300);
+
+  //Đọc nhiệt độ
+   /*Read value temp*/ 
+     result = node.readHoldingRegisters(0x0001, 2);
+    // do something with data if read is successful
+    if (result == node.ku8MBSuccess)
+    {
+       data[0] = node.receive();
+       nhietdo = float((data[0])/10);
+       Serial.print("Nhiet do Value: "); 
+       Serial.print(nhietdo); 
+       Serial.println("oC");
+    }
+       delay(200);
 
   // Đọc giá trị ph
   result = node.readHoldingRegisters(0x0003, 2);
@@ -367,20 +375,7 @@ void dataFirebase() {
     Serial.print(ph);
   }
 
-  // Đọc giá trị nhietdo
-  result = node.readHoldingRegisters(0x0002, 2);
-  // do something with data if read is successful
-  if (result == node.ku8MBSuccess)
-  {
-    data[0] = node.receive();
-    nhietdo = float((data[0]) / 1000);
-    Serial.print("Nhietdo Value: ");
-    Serial.print(nhietdo);
-    Serial.println("0C");
-  }
-  delay(200);
-
-
+ //UPLOAD dữ liệu lên firebase
   if (Firebase.ready() && (millis() - sendDataPrevMillis > 60000 || sendDataPrevMillis == 0))
   {
     sendDataPrevMillis = millis();
@@ -389,17 +384,19 @@ void dataFirebase() {
     if (fbdo.httpCode() == FIREBASE_ERROR_HTTP_CODE_OK)
     {
       String timestamp = String(fbdo.to<int>());
+      
       String phPath = "/data/" + timestamp + "/ph";
-      String nhietdoPath = "/data/" + timestamp + "/nhietdo";
+      String NhietdoPath = "/data/" + timestamp + "/nhietdo";
+     
       String latPath = "/data/" + timestamp + "/lat";
       String longPath = "/data/" + timestamp + "/long";
-      
+
       Serial.printf("Set ph... %s\n", Firebase.setFloat(fbdo, phPath, ph) ? "ok" : fbdo.errorReason().c_str());
-      Serial.printf("Set nhietdo... %s\n", Firebase.setFloat(fbdo, nhietdoPath, ec) ? "ok" : fbdo.errorReason().c_str());
+      Serial.printf("Set nhietdo... %s\n", Firebase.setFloat(fbdo, NhietdoPath, nhietdo) ? "ok" : fbdo.errorReason().c_str());
       Serial.printf("Set lat... %s\n", Firebase.setFloat(fbdo, latPath, latitude) ? "ok" : fbdo.errorReason().c_str());
       Serial.printf("Set long... %s\n", Firebase.setFloat(fbdo, longPath, longitude) ? "ok" : fbdo.errorReason().c_str());
       delay(500);
-      
+     
       Serial.printf("Get ph... %s\n", Firebase.getFloat(fbdo, phPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
       Serial.printf("Get nhietdo... %s\n", Firebase.getFloat(fbdo, nhietdoPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
       Serial.printf("Get lat... %s\n", Firebase.getFloat(fbdo, latPath) ? String(fbdo.to<float>()).c_str() : fbdo.errorReason().c_str());
